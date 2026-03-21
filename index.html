@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アスレチック</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #1a1a2e; }
+canvas { display: block; }
+#ui {
+  position: absolute; top: 10px; left: 10px;
+  color: #fff; font-family: 'Segoe UI', sans-serif; font-size: 16px;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+}
+#title-screen {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #fff; font-family: 'Segoe UI', sans-serif; z-index: 10;
+}
+#title-screen h1 {
+  font-size: 64px; margin-bottom: 20px;
+  background: linear-gradient(to right, #e94560, #f5a623, #e94560);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  animation: glow 2s ease-in-out infinite alternate;
+}
+@keyframes glow {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.3); }
+}
+#title-screen p { font-size: 20px; color: #aaa; margin-bottom: 40px; }
+#title-screen .start-btn {
+  padding: 15px 50px; font-size: 24px; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #e94560, #c23152);
+  color: #fff; cursor: pointer; transition: transform 0.2s;
+}
+#title-screen .start-btn:hover { transform: scale(1.1); }
+#title-screen .controls {
+  margin-top: 30px; font-size: 14px; color: #888; text-align: center; line-height: 2;
+}
+#game-over {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7); color: #fff; font-family: 'Segoe UI', sans-serif; z-index: 10;
+}
+#game-over h2 { font-size: 48px; color: #e94560; margin-bottom: 10px; }
+#game-over .restart-btn {
+  padding: 12px 40px; font-size: 20px; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #e94560, #c23152);
+  color: #fff; cursor: pointer; margin-top: 20px; transition: transform 0.2s;
+}
+#game-over .restart-btn:hover { transform: scale(1.1); }
+#clear-screen {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7); color: #fff; font-family: 'Segoe UI', sans-serif; z-index: 10;
+}
+#clear-screen h2 { font-size: 48px; color: #f5a623; margin-bottom: 10px; }
+#clear-screen .clear-btn {
+  padding: 12px 40px; font-size: 20px; border: none; border-radius: 8px;
+  color: #fff; cursor: pointer; margin-top: 15px; transition: transform 0.2s;
+}
+#clear-screen .clear-btn:hover { transform: scale(1.1); }
+.stage-badge {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  padding: 5px 12px; border-radius: 20px; font-size: 13px; color: #ccc;
+  cursor: pointer; transition: all 0.2s;
+}
+.stage-badge:hover {
+  background: rgba(233,69,96,0.4); border-color: #e94560; color: #fff; transform: scale(1.1);
+}
+</style>
+</head>
+<body>
+
+<div id="title-screen">
+  <h1>アスレチック</h1>
+  <p>障害物を乗り越えてゴールを目指せ！</p>
+  <button class="start-btn" onclick="startGame(1)">スタート</button>
+  <div class="controls">
+    ← → : 移動 ／ スペース or ↑ : ジャンプ（2段ジャンプ可）<br>
+    壁に張り付いてジャンプで壁キック！
+  </div>
+  <div class="stage-list">
+    <p style="color:#f5a623;font-size:18px;margin-top:30px;">全10ステージ</p>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
+      <span class="stage-badge" onclick="startGame(1)">1 ジャンプ</span>
+      <span class="stage-badge" onclick="startGame(2)">2 高低差</span>
+      <span class="stage-badge" onclick="startGame(3)">3 トゲトゲ</span>
+      <span class="stage-badge" onclick="startGame(4)">4 動く足場</span>
+      <span class="stage-badge" onclick="startGame(5)">5 壁キック</span>
+      <span class="stage-badge" onclick="startGame(6)">6 すべり台</span>
+      <span class="stage-badge" onclick="startGame(7)">7 コンボ</span>
+      <span class="stage-badge" onclick="startGame(8)">8 ミニ足場</span>
+      <span class="stage-badge" onclick="startGame(9)">9 W壁キック</span>
+      <span class="stage-badge" onclick="startGame(10)">10 最終!</span>
+    </div>
+  </div>
+</div>
+
+<div id="game-over">
+  <h2>ゲームオーバー</h2>
+  <p id="go-score"></p>
+  <button class="restart-btn" onclick="startGame(currentStageNum)">リトライ</button>
+  <button class="restart-btn" style="background:linear-gradient(135deg,#4a4e69,#3a3a5c);margin-top:10px;" onclick="goTitle()">ステージ選択へ</button>
+</div>
+
+<div id="clear-screen">
+  <h2 id="clear-title"></h2>
+  <p id="clear-score"></p>
+</div>
+
+<div id="ui">
+  <div id="hud" style="display:none;">
+    <span id="stage-num">ステージ: 1/10</span> ／
+    <span id="coin-count">コイン: 0</span>
+  </div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const STAGE_NAMES = ['ジャンプ','高低差','トゲトゲ','動く足場','壁キック','すべり台','コンボ','ミニ足場','W壁キック','最終!'];
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const GRAVITY = 0.6;
+const PLAYER_W = 28;
+const PLAYER_H = 54;
+
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+let player, camera, platforms, coins, hazards, movingPlatforms, goalX, gameRunning, coinCount, particles;
+let butterflies = [];
+let currentStageNum = 1;
+let loopStarted = false;
+let checkpoints = []; // チェックポイント位置 [{x, y, passed}]
+let lastCheckpoint = null; // 最後に通過したチェックポイント
+
+// シード付き乱数（ステージごとに同じマップ）
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+// セグメント生成関数（テーマごと）
+function addJumpSegment(x, gY, rng, easy) {
+  const count = easy ? (2 + Math.floor(rng() * 2)) : (3 + Math.floor(rng() * 3));
+  for (let i = 0; i < count; i++) {
+    const gap = easy ? (60 + rng() * 30) : (120 + rng() * 40);
+    const px = x + i * gap;
+    const py = easy ? (gY - 15 - rng() * 30) : (gY - 20 - rng() * 80);
+    const w = easy ? (120 + rng() * 60) : (70 + rng() * 50);
+    platforms.push({ x: px, y: py, w, h: 20, color: '#52796f' });
+    if (rng() > 0.4) coins.push({ x: px + w/2, y: py - 40, r: 12, collected: false });
+    x = px + w + (easy ? 15 : 30);
+  }
+  return x;
+}
+
+function addHeightSegment(x, gY, rng) {
+  const count = 3 + Math.floor(rng() * 3);
+  let lastY = gY - 80;
+  for (let i = 0; i < count; i++) {
+    const py = gY - 40 - rng() * 150;
+    const w = 100 + rng() * 60;
+    platforms.push({ x, y: py, w, h: 20, color: '#52796f' });
+    if (rng() > 0.5) coins.push({ x: x + w/2, y: py - 40, r: 12, collected: false });
+    lastY = py;
+    x += w + 80 + rng() * 60;
+  }
+  return x;
+}
+
+function addSpikeSegment(x, gY, rng) {
+  const groundW = 400 + rng() * 300;
+  platforms.push({ x, y: gY, w: groundW, h: 60, color: '#2d6a4f' });
+  const spikeCount = 2 + Math.floor(rng() * 3);
+  for (let i = 0; i < spikeCount; i++) {
+    const sx = x + 60 + i * (groundW / (spikeCount + 1));
+    hazards.push({ x: sx, y: gY - 20, w: 40 + rng() * 20, h: 20 });
+    const py = gY - 70 - rng() * 60;
+    platforms.push({ x: sx - 10, y: py, w: 70, h: 15, color: '#52796f' });
+    if (rng() > 0.4) coins.push({ x: sx + 20, y: py - 40, r: 12, collected: false });
+  }
+  return x + groundW + 50;
+}
+
+function addMovingSegment(x, gY, rng) {
+  const count = 2 + Math.floor(rng() * 2);
+  for (let i = 0; i < count; i++) {
+    const isVert = rng() > 0.5;
+    const px = x + i * (250 + rng() * 100);
+    if (isVert) {
+      const baseY = gY - 100 - rng() * 80;
+      movingPlatforms.push({
+        x: px, y: baseY, w: 100, h: 20, color: '#e09800',
+        startY: baseY - 80, endY: baseY + 40, speed: 1 + rng(), dir: 1, axis: 'y',
+        startX: px, endX: px
+      });
+    } else {
+      movingPlatforms.push({
+        x: px, y: gY - 100 - rng() * 80, w: 100, h: 20, color: '#e09800',
+        startX: px, endX: px + 150 + rng() * 100, speed: 1.2 + rng(), dir: 1, axis: 'x'
+      });
+    }
+    if (rng() > 0.3) coins.push({ x: px + 50, y: gY - 200 - rng() * 50, r: 12, collected: false });
+    x = px + 250;
+  }
+  return x;
+}
+
+function addWallKickSegment(x, gY, rng) {
+  platforms.push({ x: x - 30, y: gY, w: 280, h: 60, color: '#2d6a4f' });
+  const wallH = 200 + rng() * 100;
+  const openH = 70;
+  platforms.push({ x, y: gY - wallH, w: 25, h: wallH - openH, color: '#4a4e69' });
+  platforms.push({ x: x + 170, y: gY - wallH, w: 25, h: wallH, color: '#4a4e69' });
+  platforms.push({ x: x - 20, y: gY - wallH - 10, w: 240, h: 20, color: '#52796f' });
+  coins.push({ x: x + 85, y: gY - wallH * 0.8, r: 12, collected: false });
+  coins.push({ x: x + 85, y: gY - wallH * 0.5, r: 12, collected: false });
+  if (rng() > 0.8) {
+    hazards.push({ x: x + 50, y: gY - 20, w: 70, h: 20 });
+  }
+  return x + 300;
+}
+
+function addSlideSegment(x, gY, rng) {
+  const count = 4 + Math.floor(rng() * 4);
+  const startY = gY - 250 - rng() * 50;
+  for (let i = 0; i < count; i++) {
+    const px = x + i * (100 + rng() * 30);
+    const py = startY + i * (35 + rng() * 15);
+    platforms.push({ x: px, y: py, w: 70, h: 15, color: '#7b6ba0' });
+    if (i % 2 === 0) coins.push({ x: px + 30, y: py - 40, r: 12, collected: false });
+    x = px;
+  }
+  return x + 150;
+}
+
+function addMiniPlatSegment(x, gY, rng) {
+  const count = 5 + Math.floor(rng() * 4);
+  for (let i = 0; i < count; i++) {
+    const px = x + i * (100 + rng() * 40);
+    const py = gY - 50 - Math.abs(Math.sin(i * 1.1 + rng())) * 130;
+    platforms.push({ x: px, y: py, w: 40 + rng() * 20, h: 15, color: '#c76f30' });
+    if (rng() > 0.5) coins.push({ x: px + 20, y: py - 40, r: 12, collected: false });
+    x = px;
+  }
+  return x + 150;
+}
+
+function addComboSegment(x, gY, rng) {
+  // 地面＋トゲ＋動く足場
+  const groundW = 500 + rng() * 200;
+  platforms.push({ x, y: gY, w: groundW, h: 60, color: '#2d6a4f' });
+  const spikeCount = 3 + Math.floor(rng() * 3);
+  for (let i = 0; i < spikeCount; i++) {
+    hazards.push({ x: x + 50 + i * (groundW / (spikeCount + 1)), y: gY - 20, w: 50, h: 20 });
+  }
+  movingPlatforms.push({
+    x: x + 30, y: gY - 100, w: 90, h: 20, color: '#e09800',
+    startX: x + 30, endX: x + groundW - 120, speed: 1.5 + rng(), dir: 1, axis: 'x'
+  });
+  coins.push({ x: x + groundW / 2, y: gY - 170, r: 12, collected: false });
+  return x + groundW + 50;
+}
+
+// 各ステージを生成
+function buildStage(stageNum) {
+  platforms = [];
+  coins = [];
+  hazards = [];
+  movingPlatforms = [];
+  particles = [];
+  coinCount = 0;
+
+  // 手前のちょうちょ3匹（それぞれ違う飛び方）
+  butterflies = [];
+  const bfRng = seededRandom(stageNum * 777);
+  butterflies.push({
+    x: bfRng() * 3000, baseY: canvas.height * 0.3, drawY: canvas.height * 0.3,
+    color: '#ff4da6', color2: '#ff80bf', size: 5,
+    speed: 0.25, phase: 0, wingSpeed: 4.5, floatAmp: 35,
+    flyStyle: 'zigzag', foreground: true, driftSpeed: 0.5,
+  });
+  butterflies.push({
+    x: 500 + bfRng() * 3000, baseY: canvas.height * 0.5, drawY: canvas.height * 0.5,
+    color: '#ffa62f', color2: '#ffd17a', size: 4.5,
+    speed: 0.4, phase: 2, wingSpeed: 5.5, floatAmp: 25,
+    flyStyle: 'circle', foreground: true, driftSpeed: 0.3,
+  });
+  butterflies.push({
+    x: 1000 + bfRng() * 3000, baseY: canvas.height * 0.4, drawY: canvas.height * 0.4,
+    color: '#6ec6ff', color2: '#b3e0ff', size: 5.5,
+    speed: 0.15, phase: 4, wingSpeed: 3.5, floatAmp: 40,
+    flyStyle: 'swoop', foreground: true, driftSpeed: 0.2,
+  });
+
+  const gY = canvas.height - 60;
+  const rng = seededRandom(stageNum * 9999);
+
+  // スタート地面
+  platforms.push({ x: 0, y: gY, w: 400, h: 60, color: '#2d6a4f' });
+
+  let x = 450;
+  const SEGMENTS = 20;
+
+  // ステージのテーマに合わせた生成関数を選ぶ
+  const generators = {
+    1: (x, gY, rng) => {
+      // ステージ1は簡単：毎回休憩地面＋やさしいジャンプ
+      platforms.push({ x, y: gY, w: 250, h: 60, color: '#2d6a4f' });
+      x += 280;
+      return addJumpSegment(x, gY, rng, true);
+    },
+    2: (x, gY, rng) => addHeightSegment(x, gY, rng),
+    3: (x, gY, rng) => addSpikeSegment(x, gY, rng),
+    4: (x, gY, rng) => {
+      x = addMovingSegment(x, gY, rng);
+      if (rng() > 0.6) {
+        platforms.push({ x, y: gY, w: 150, h: 60, color: '#2d6a4f' });
+        x += 200;
+      }
+      return x;
+    },
+    5: (x, gY, rng) => {
+      x = addWallKickSegment(x, gY, rng);
+      // 壁キック間の通路
+      const bridgeW = 100 + rng() * 100;
+      platforms.push({ x, y: gY - 200 - rng() * 80, w: bridgeW, h: 20, color: '#52796f' });
+      return x + bridgeW + 50;
+    },
+    6: (x, gY, rng) => {
+      x = addSlideSegment(x, gY, rng);
+      platforms.push({ x, y: gY, w: 150, h: 60, color: '#2d6a4f' });
+      return x + 200;
+    },
+    7: (x, gY, rng) => addComboSegment(x, gY, rng),
+    8: (x, gY, rng) => addMiniPlatSegment(x, gY, rng),
+    9: (x, gY, rng) => {
+      x = addWallKickSegment(x, gY, rng);
+      // 間にトゲ地面
+      platforms.push({ x, y: gY, w: 200, h: 60, color: '#2d6a4f' });
+      hazards.push({ x: x + 50, y: gY - 20, w: 80, h: 20 });
+      platforms.push({ x: x + 30, y: gY - 80, w: 80, h: 15, color: '#52796f' });
+      coins.push({ x: x + 70, y: gY - 130, r: 12, collected: false });
+      return x + 260;
+    },
+    10: (x, gY, rng) => {
+      // 全部ミックス
+      const type = Math.floor(rng() * 5);
+      if (type === 0) return addJumpSegment(x, gY, rng);
+      if (type === 1) return addSpikeSegment(x, gY, rng);
+      if (type === 2) return addMovingSegment(x, gY, rng);
+      if (type === 3) return addWallKickSegment(x, gY, rng);
+      return addComboSegment(x, gY, rng);
+    }
+  };
+
+  const gen = generators[stageNum];
+  checkpoints = [];
+  lastCheckpoint = null;
+
+  const cpSegments = [Math.floor(SEGMENTS / 3), Math.floor(SEGMENTS * 2 / 3)]; // セグメント7と13
+
+  for (let seg = 0; seg < SEGMENTS; seg++) {
+    // チェックポイントをセグメントの境目に設置
+    if (cpSegments.includes(seg)) {
+      // チェックポイント用の安全な地面を追加
+      platforms.push({ x, y: gY, w: 200, h: 60, color: '#2d6a4f' });
+      checkpoints.push({ x: x + 100, y: gY, passed: false });
+      x += 250;
+    }
+    x = gen(x, gY, rng);
+    // セグメント間に少し間隔
+    x += 30 + rng() * 50;
+  }
+
+  // ゴール地面
+  platforms.push({ x, y: gY, w: 300, h: 60, color: '#2d6a4f' });
+  goalX = x + 200;
+}
+
+function initPlayer() {
+  player = {
+    x: 80, y: canvas.height - 60 - PLAYER_H,
+    vx: 0, vy: 0,
+    w: PLAYER_W, h: PLAYER_H,
+    onGround: false, jumps: 0, maxJumps: 2,
+    facing: 1, wallSliding: false, wallDir: 0,
+    animFrame: 0, animTimer: 0,
+  };
+  camera = { x: 0, y: 0 };
+}
+
+function respawnAtCheckpoint() {
+  player.x = lastCheckpoint.x;
+  player.y = lastCheckpoint.y;
+  player.vx = 0;
+  player.vy = 0;
+  player.onGround = false;
+  player.jumps = 0;
+  player.wallSliding = false;
+  spawnParticles(player.x + player.w / 2, player.y + player.h / 2, '#4ade80', 20);
+}
+
+function goTitle() {
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('clear-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('title-screen').style.display = 'flex';
+  gameRunning = false;
+}
+
+function startGame(stageNum) {
+  if (!stageNum || stageNum < 1) stageNum = 1;
+  if (stageNum > 10) stageNum = 10;
+  currentStageNum = stageNum;
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('clear-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'block';
+  buildStage(stageNum);
+  initPlayer();
+  gameRunning = true;
+  if (!loopStarted) { loopStarted = true; gameLoop(); }
+}
+
+function rectCollide(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6 - 2,
+      life: 30 + Math.random() * 20,
+      color, size: 2 + Math.random() * 4,
+    });
+  }
+}
+
+function update() {
+  if (!gameRunning) return;
+  const p = player;
+
+  const moveLeft = keys['ArrowLeft'] || keys['KeyA'];
+  const moveRight = keys['ArrowRight'] || keys['KeyD'];
+  const jumpPressed = keys['Space'] || keys['ArrowUp'] || keys['KeyW'];
+
+  const accel = p.onGround ? 0.8 : 0.5;
+  if (moveLeft) { p.vx -= accel; p.facing = -1; }
+  if (moveRight) { p.vx += accel; p.facing = 1; }
+
+  p.vx *= p.onGround ? 0.85 : 0.92;
+  if (p.vx > 7) p.vx = 7;
+  if (p.vx < -7) p.vx = -7;
+
+  if (jumpPressed && !p.jumpHeld) {
+    if (p.wallSliding) {
+      p.vx = p.wallDir * -8;
+      p.vy = -12;
+      p.jumps = 1;
+      p.wallSliding = false;
+      spawnParticles(p.x + (p.wallDir > 0 ? 0 : p.w), p.y + p.h / 2, '#aaa', 5);
+    } else if (p.jumps < p.maxJumps) {
+      p.vy = p.jumps === 0 ? -12 : -10;
+      p.jumps++;
+      spawnParticles(p.x + p.w / 2, p.y + p.h, '#aaa', 5);
+    }
+  }
+  p.jumpHeld = jumpPressed;
+
+  p.vy += GRAVITY;
+  if (p.vy > 15) p.vy = 15;
+
+  p.wallSliding = false;
+  if (!p.onGround && p.vy > 0) {
+    const wallCheck = { x: p.x + (p.facing > 0 ? 2 : -2), y: p.y, w: p.w, h: p.h };
+    for (const plat of platforms) {
+      if (rectCollide(wallCheck, plat) && plat.h > 40) {
+        p.wallSliding = true;
+        p.wallDir = p.facing;
+        p.vy = Math.min(p.vy, 2);
+        p.jumps = 1;
+        break;
+      }
+    }
+  }
+
+  let ridingPlatform = null;
+  for (const mp of movingPlatforms) {
+    const prevX = mp.x; const prevY = mp.y;
+    if (mp.axis === 'x') {
+      mp.x += mp.speed * mp.dir;
+      if (mp.x <= mp.startX || mp.x >= mp.endX) mp.dir *= -1;
+    } else {
+      mp.y += mp.speed * mp.dir;
+      if (mp.y <= mp.startY || mp.y >= mp.endY) mp.dir *= -1;
+    }
+    if (p.vy >= 0 && p.x + p.w > mp.x && p.x < mp.x + mp.w &&
+        p.y + p.h >= mp.y - 4 && p.y + p.h <= mp.y + 14) {
+      ridingPlatform = mp;
+      ridingPlatform.dx = mp.x - prevX;
+      ridingPlatform.dy = mp.y - prevY;
+    }
+  }
+
+  if (ridingPlatform) {
+    p.x += ridingPlatform.dx;
+    p.y = ridingPlatform.y - p.h;
+    p.vy = 0;
+    p.onGround = true;
+    p.jumps = 0;
+  }
+
+  p.x += p.vx;
+
+  const allPlats = [...platforms, ...movingPlatforms];
+  for (const plat of allPlats) {
+    if (rectCollide(p, plat)) {
+      if (p.vx > 0) p.x = plat.x - p.w;
+      else if (p.vx < 0) p.x = plat.x + plat.w;
+      p.vx = 0;
+    }
+  }
+
+  if (!ridingPlatform) {
+    p.y += p.vy;
+    p.onGround = false;
+    for (const plat of allPlats) {
+      if (rectCollide(p, plat)) {
+        if (p.vy > 0) { p.y = plat.y - p.h; p.onGround = true; p.jumps = 0; }
+        else { p.y = plat.y + plat.h; }
+        p.vy = 0;
+      }
+    }
+  }
+
+  for (const c of coins) {
+    if (c.collected) continue;
+    const dx = (p.x + p.w / 2) - c.x;
+    const dy = (p.y + p.h / 2) - c.y;
+    if (Math.sqrt(dx * dx + dy * dy) < c.r + 15) {
+      c.collected = true; coinCount++;
+      spawnParticles(c.x, c.y, '#f5a623', 10);
+    }
+  }
+
+  // チェックポイント通過判定
+  for (const cp of checkpoints) {
+    if (!cp.passed && p.x > cp.x - 30) {
+      cp.passed = true;
+      lastCheckpoint = { x: cp.x - 30, y: cp.y - p.h - 10 };
+      spawnParticles(cp.x, cp.y - 60, '#4ade80', 15);
+    }
+  }
+
+  for (const h of hazards) {
+    if (rectCollide(p, h)) {
+      if (lastCheckpoint) {
+        // チェックポイントから復活
+        respawnAtCheckpoint();
+      } else {
+        gameRunning = false;
+        document.getElementById('go-score').textContent = `ステージ${currentStageNum}「${STAGE_NAMES[currentStageNum-1]}」 ／ コイン: ${coinCount}個`;
+        document.getElementById('game-over').style.display = 'flex';
+      }
+      return;
+    }
+  }
+
+  if (p.y > canvas.height + 100) {
+    if (lastCheckpoint) {
+      respawnAtCheckpoint();
+    } else {
+      gameRunning = false;
+      document.getElementById('go-score').textContent = `ステージ${currentStageNum}「${STAGE_NAMES[currentStageNum-1]}」 ／ コイン: ${coinCount}個`;
+      document.getElementById('game-over').style.display = 'flex';
+    }
+    return;
+  }
+
+  if (p.x > goalX) {
+    gameRunning = false;
+    if (currentStageNum >= 10) {
+      // 全クリア！
+      document.getElementById('clear-title').textContent = '全ステージクリア！おめでとう！';
+      document.getElementById('clear-score').textContent = `コイン: ${coinCount} / ${coins.length}個`;
+      document.getElementById('clear-screen').style.display = 'flex';
+      setTimeout(() => { goTitle(); }, 3000);
+    } else {
+      // 次のステージへ自動で進む
+      document.getElementById('clear-title').textContent = `ステージ${currentStageNum} クリア！`;
+      document.getElementById('clear-score').textContent = `コイン: ${coinCount} / ${coins.length}個`;
+      document.getElementById('clear-screen').style.display = 'flex';
+      setTimeout(() => {
+        document.getElementById('clear-screen').style.display = 'none';
+        startGame(currentStageNum + 1);
+      }, 1500);
+    }
+    return;
+  }
+
+  const targetCamX = p.x - canvas.width / 3;
+  const targetCamY = p.y - canvas.height / 2;
+  camera.x += (targetCamX - camera.x) * 0.1;
+  camera.y += (targetCamY - camera.y) * 0.08;
+  if (camera.x < 0) camera.x = 0;
+
+  p.animTimer++;
+  if (Math.abs(p.vx) > 0.5 && p.onGround) {
+    if (p.animTimer % 6 === 0) p.animFrame = (p.animFrame + 1) % 4;
+  } else { p.animFrame = 0; }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const pt = particles[i];
+    pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.15; pt.life--;
+    if (pt.life <= 0) particles.splice(i, 1);
+  }
+
+  updateButterflies();
+
+  document.getElementById('stage-num').textContent = `ステージ: ${currentStageNum}/10「${STAGE_NAMES[currentStageNum-1]}」`;
+  document.getElementById('coin-count').textContent = `コイン: ${coinCount}`;
+}
+
+function drawBG() {
+  const time = Date.now() * 0.001;
+
+  // 空のグラデーション（青空）
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  skyGrad.addColorStop(0, '#1a6dd4');
+  skyGrad.addColorStop(0.25, '#4a9ff5');
+  skyGrad.addColorStop(0.5, '#7ec8e3');
+  skyGrad.addColorStop(0.75, '#b5e8f7');
+  skyGrad.addColorStop(1, '#d4f0fc');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 太陽
+  const sunX = canvas.width * 0.8;
+  const sunY = canvas.height * 0.12;
+  // 太陽の光芒（ぼんやり）
+  const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 150);
+  sunGlow.addColorStop(0, 'rgba(255,240,180,0.5)');
+  sunGlow.addColorStop(0.3, 'rgba(255,220,120,0.2)');
+  sunGlow.addColorStop(1, 'rgba(255,200,80,0)');
+  ctx.fillStyle = sunGlow;
+  ctx.fillRect(sunX - 150, sunY - 150, 300, 300);
+  // 太陽本体
+  ctx.fillStyle = '#fff6d5';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffecb3';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 雲（パララックス）
+  drawCloud(100 - camera.x * 0.02, canvas.height * 0.08, 1.0, time);
+  drawCloud(400 - camera.x * 0.03, canvas.height * 0.15, 0.7, time);
+  drawCloud(750 - camera.x * 0.015, canvas.height * 0.06, 1.2, time);
+  drawCloud(1100 - camera.x * 0.025, canvas.height * 0.18, 0.8, time);
+  drawCloud(300 - camera.x * 0.01, canvas.height * 0.25, 0.6, time);
+  drawCloud(900 - camera.x * 0.035, canvas.height * 0.1, 0.9, time);
+  drawCloud(600 - camera.x * 0.02, canvas.height * 0.22, 1.1, time);
+
+  // 遠くの山（奥）
+  const mtGrad1 = ctx.createLinearGradient(0, canvas.height * 0.5, 0, canvas.height);
+  mtGrad1.addColorStop(0, '#5b8a72');
+  mtGrad1.addColorStop(1, '#3d6b5a');
+  ctx.fillStyle = mtGrad1;
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height);
+  for (let x = 0; x <= canvas.width + 80; x += 80) {
+    const mx = x + camera.x * 0.05;
+    const h = 180 + Math.sin(mx * 0.002) * 100 + Math.cos(mx * 0.005) * 50;
+    ctx.lineTo(x, canvas.height - h);
+  }
+  ctx.lineTo(canvas.width, canvas.height);
+  ctx.fill();
+
+  // 遠くの山（手前）
+  const mtGrad2 = ctx.createLinearGradient(0, canvas.height * 0.6, 0, canvas.height);
+  mtGrad2.addColorStop(0, '#3a6b52');
+  mtGrad2.addColorStop(1, '#2a4f3e');
+  ctx.fillStyle = mtGrad2;
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height);
+  for (let x = 0; x <= canvas.width + 60; x += 60) {
+    const mx = x + camera.x * 0.08;
+    const h = 120 + Math.sin(mx * 0.004) * 70 + Math.cos(mx * 0.009) * 35;
+    ctx.lineTo(x, canvas.height - h);
+  }
+  ctx.lineTo(canvas.width, canvas.height);
+  ctx.fill();
+
+  // 遠くの木のシルエット
+  ctx.fillStyle = '#1e3d2f';
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height);
+  for (let x = 0; x <= canvas.width + 40; x += 40) {
+    const mx = x + camera.x * 0.12;
+    const baseH = 80 + Math.sin(mx * 0.006) * 40 + Math.cos(mx * 0.01) * 25;
+    const treeH = baseH + Math.abs(Math.sin(mx * 0.03)) * 30;
+    ctx.lineTo(x, canvas.height - treeH);
+  }
+  ctx.lineTo(canvas.width, canvas.height);
+  ctx.fill();
+}
+
+// 雲の描画
+function drawCloud(baseX, baseY, scale, time) {
+  const drift = Math.sin(time * 0.15 + baseX * 0.01) * 8;
+  const x = ((baseX + drift) % (canvas.width + 300)) - 100;
+  const y = baseY;
+  const s = scale;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath();
+  ctx.ellipse(x, y, 40 * s, 18 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x - 25 * s, y + 4 * s, 25 * s, 14 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 28 * s, y + 3 * s, 28 * s, 13 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 10 * s, y - 10 * s, 22 * s, 14 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x - 10 * s, y - 7 * s, 18 * s, 12 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 雲のハイライト
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(x + 5 * s, y - 12 * s, 15 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  const p = player;
+  const sx = p.x - camera.x, sy = p.y - camera.y;
+  ctx.save();
+  ctx.translate(sx + p.w / 2, sy + p.h / 2 - 4);
+  if (p.facing < 0) ctx.scale(-1, 1);
+
+  const running = p.onGround && Math.abs(p.vx) > 0.5;
+  const legSwing = running ? Math.sin(p.animFrame * Math.PI / 2) * 0.5 : 0;
+  const armSwing = running ? Math.sin(p.animFrame * Math.PI / 2) * 0.4 : 0;
+  const breathe = Math.sin(Date.now() * 0.004) * 0.5;
+  const bodyBob = running ? Math.abs(Math.sin(p.animFrame * Math.PI / 2)) * 1.5 : 0;
+
+  // 影
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, p.h / 2 + 1, 10, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- 後ろ足 ---
+  ctx.save();
+  ctx.translate(-3, 6 + breathe);
+  ctx.rotate(-legSwing);
+  // 太もも
+  ctx.fillStyle = '#3d5a80';
+  roundRect(-3, 0, 7, 10, 2);
+  // すね
+  ctx.save();
+  ctx.translate(0, 10);
+  ctx.rotate(Math.max(0, -legSwing * 0.6));
+  ctx.fillStyle = '#3d5a80';
+  roundRect(-2.5, 0, 6, 9, 2);
+  // 靴
+  ctx.fillStyle = '#4a2c1a';
+  roundRect(-3, 8, 8, 5, 2);
+  ctx.restore();
+  ctx.restore();
+
+  // --- 後ろ腕 ---
+  ctx.save();
+  ctx.translate(-5, -6 + breathe);
+  ctx.rotate(armSwing);
+  // 上腕
+  ctx.fillStyle = '#c23152';
+  roundRect(-2.5, 0, 5, 8, 2);
+  // 前腕
+  ctx.save();
+  ctx.translate(0, 8);
+  ctx.rotate(p.wallSliding ? -1.2 : 0.3 + armSwing * 0.3);
+  ctx.fillStyle = '#ffc8a2';
+  roundRect(-2, 0, 4.5, 7, 2);
+  // 手
+  ctx.fillStyle = '#ffc8a2';
+  ctx.beginPath();
+  ctx.arc(0, 7, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.restore();
+
+  // --- 体（胴体）---
+  ctx.save();
+  ctx.translate(0, breathe - bodyBob);
+
+  // 胴体
+  ctx.fillStyle = '#e94560';
+  roundRect(-7, -8, 14, 16, 3);
+  // 服のディテール（Vライン）
+  ctx.strokeStyle = '#c23152';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-3, -8);
+  ctx.lineTo(0, -3);
+  ctx.lineTo(3, -8);
+  ctx.stroke();
+  // ベルト
+  ctx.fillStyle = '#5c4033';
+  roundRect(-7, 6, 14, 3, 1);
+  ctx.fillStyle = '#f5a623';
+  roundRect(-1.5, 6.5, 3, 2, 0.5);
+
+  // --- 頭 ---
+  // 首
+  ctx.fillStyle = '#ffc8a2';
+  roundRect(-2.5, -12, 5, 4, 1);
+
+  // 頭の形（丸み）
+  ctx.fillStyle = '#ffd6a5';
+  ctx.beginPath();
+  ctx.ellipse(0, -20, 9, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 髪の毛
+  ctx.fillStyle = '#4a2c1a';
+  ctx.beginPath();
+  ctx.ellipse(0, -24, 10, 7, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  // サイドの髪
+  ctx.beginPath();
+  ctx.ellipse(-8, -20, 3, 6, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  // 前髪
+  ctx.beginPath();
+  ctx.moveTo(-7, -24);
+  ctx.quadraticCurveTo(-5, -17, -2, -18);
+  ctx.quadraticCurveTo(1, -17, 4, -18);
+  ctx.quadraticCurveTo(7, -17, 8, -24);
+  ctx.fill();
+
+  // 耳
+  ctx.fillStyle = '#ffc8a2';
+  ctx.beginPath();
+  ctx.ellipse(9, -19, 2.5, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f0a88c';
+  ctx.beginPath();
+  ctx.ellipse(9, -19, 1.5, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 目
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(3, -20, 3.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // 瞳
+  ctx.fillStyle = '#2d3436';
+  ctx.beginPath();
+  ctx.ellipse(4, -20, 2, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // ハイライト
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(5, -21, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // まゆ毛
+  ctx.strokeStyle = '#4a2c1a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(1, -24);
+  ctx.quadraticCurveTo(4, -25.5, 7, -24);
+  ctx.stroke();
+
+  // 口
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (p.vy < -3) {
+    // ジャンプ中は口を開ける
+    ctx.arc(3, -15, 2, 0, Math.PI);
+  } else if (running) {
+    ctx.moveTo(2, -15);
+    ctx.quadraticCurveTo(4, -13.5, 6, -15);
+  } else {
+    ctx.moveTo(2, -15);
+    ctx.lineTo(5, -15);
+  }
+  ctx.stroke();
+
+  // 鼻
+  ctx.fillStyle = '#f0a88c';
+  ctx.beginPath();
+  ctx.ellipse(6, -17.5, 1.2, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore(); // 体セーブ復元
+
+  // --- 前足 ---
+  ctx.save();
+  ctx.translate(3, 6 + breathe);
+  ctx.rotate(legSwing);
+  ctx.fillStyle = '#4a6fa5';
+  roundRect(-3, 0, 7, 10, 2);
+  ctx.save();
+  ctx.translate(0, 10);
+  ctx.rotate(Math.max(0, legSwing * 0.6));
+  ctx.fillStyle = '#4a6fa5';
+  roundRect(-2.5, 0, 6, 9, 2);
+  ctx.fillStyle = '#5c3a1e';
+  roundRect(-3, 8, 8, 5, 2);
+  ctx.restore();
+  ctx.restore();
+
+  // --- 前腕 ---
+  ctx.save();
+  ctx.translate(5, -6 + breathe);
+  ctx.rotate(-armSwing);
+  ctx.fillStyle = '#e94560';
+  roundRect(-2.5, 0, 5, 8, 2);
+  ctx.save();
+  ctx.translate(0, 8);
+  ctx.rotate(p.wallSliding ? 1.2 : -0.3 - armSwing * 0.3);
+  ctx.fillStyle = '#ffc8a2';
+  roundRect(-2, 0, 4.5, 7, 2);
+  ctx.fillStyle = '#ffc8a2';
+  ctx.beginPath();
+  ctx.arc(0, 7, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.restore();
+
+  // 壁スライドエフェクト
+  if (p.wallSliding) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(-p.w / 2 - 2, -p.h / 2 + 5 + i * 10 + Math.random() * 3, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+// 角丸四角形ヘルパー
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.fill();
+}
+
+function drawPlatforms() {
+  const time = Date.now() * 0.002;
+  for (const plat of platforms) {
+    const sx = plat.x - camera.x, sy = plat.y - camera.y;
+
+    // 地面の本体
+    ctx.fillStyle = plat.color;
+    ctx.fillRect(sx, sy, plat.w, plat.h);
+
+    // 土の層（地面が厚い場合）
+    if (plat.h >= 40) {
+      // 土のグラデーション（上が明るく、下が暗い）
+      const dirtGrad = ctx.createLinearGradient(0, sy + 14, 0, sy + plat.h);
+      dirtGrad.addColorStop(0, '#7a5230');
+      dirtGrad.addColorStop(0.4, '#5c3a1e');
+      dirtGrad.addColorStop(1, '#3d2510');
+      ctx.fillStyle = dirtGrad;
+      ctx.fillRect(sx, sy + 14, plat.w, plat.h - 14);
+
+      // 土と草の境目 — 波打つライン
+      const borderRng = seededRandom(Math.floor(plat.x * 5 + plat.y * 2));
+      ctx.fillStyle = plat.color;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + 14);
+      for (let bx = 0; bx <= plat.w; bx += 6) {
+        const bumpH = 2 + borderRng() * 5;
+        ctx.lineTo(sx + bx, sy + 14 - bumpH);
+      }
+      ctx.lineTo(sx + plat.w, sy + 14);
+      ctx.fill();
+
+      // 境目に小さい根っこ・草の根
+      const rootRng = seededRandom(Math.floor(plat.x * 19 + plat.y * 5));
+      for (let i = 0; i < plat.w / 40; i++) {
+        const rx = sx + 8 + rootRng() * (plat.w - 16);
+        const ry = sy + 13 + rootRng() * 4;
+        const rLen = 4 + rootRng() * 8;
+        const rDir = rootRng() > 0.5 ? 1 : -1;
+        ctx.strokeStyle = `rgba(90,60,30,${0.3 + rootRng() * 0.4})`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.quadraticCurveTo(rx + rDir * rLen * 0.5, ry + rLen * 0.7, rx + rDir * rLen, ry + rLen);
+        ctx.stroke();
+      }
+
+      // 土の中の石ころ
+      const rng = seededRandom(Math.floor(plat.x * 7 + plat.y * 3));
+      for (let i = 0; i < plat.w / 60; i++) {
+        const stoneX = sx + 10 + rng() * (plat.w - 20);
+        const stoneY = sy + 22 + rng() * (plat.h - 34);
+        const stoneW = 3 + rng() * 5;
+        const stoneH = 2 + rng() * 3;
+        // 石の影
+        ctx.fillStyle = `rgba(40,25,10,${0.2 + rng() * 0.2})`;
+        ctx.beginPath();
+        ctx.ellipse(stoneX + 1, stoneY + 1, stoneW, stoneH, rng() * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        // 石本体
+        ctx.fillStyle = `rgba(120,95,70,${0.4 + rng() * 0.3})`;
+        ctx.beginPath();
+        ctx.ellipse(stoneX, stoneY, stoneW, stoneH, rng() * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        // 石ハイライト
+        ctx.fillStyle = `rgba(180,160,130,${0.15 + rng() * 0.15})`;
+        ctx.beginPath();
+        ctx.ellipse(stoneX - 1, stoneY - 1, stoneW * 0.5, stoneH * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 土の断面テクスチャ（横筋）
+      ctx.strokeStyle = 'rgba(80,55,30,0.15)';
+      ctx.lineWidth = 0.5;
+      const layerRng = seededRandom(Math.floor(plat.x * 11));
+      for (let ly = sy + 20; ly < sy + plat.h - 5; ly += 8 + layerRng() * 6) {
+        ctx.beginPath();
+        ctx.moveTo(sx, ly);
+        for (let lx = 0; lx <= plat.w; lx += 12) {
+          ctx.lineTo(sx + lx, ly + (layerRng() - 0.5) * 3);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // 上面の芝生（丸みのある緑の層）
+    const grassLayerH = plat.h >= 40 ? 14 : Math.min(plat.h, 6);
+    const grassGrad = ctx.createLinearGradient(0, sy, 0, sy + grassLayerH);
+    grassGrad.addColorStop(0, '#6ece5a');
+    grassGrad.addColorStop(0.3, '#4a9e5e');
+    grassGrad.addColorStop(1, plat.color);
+    ctx.fillStyle = grassGrad;
+    // 上面を丸みのある形に
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + grassLayerH);
+    ctx.lineTo(sx, sy + 3);
+    ctx.quadraticCurveTo(sx, sy, sx + 3, sy);
+    ctx.lineTo(sx + plat.w - 3, sy);
+    ctx.quadraticCurveTo(sx + plat.w, sy, sx + plat.w, sy + 3);
+    ctx.lineTo(sx + plat.w, sy + grassLayerH);
+    ctx.fill();
+    // トップのハイライトライン
+    ctx.strokeStyle = 'rgba(150,240,120,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx + 3, sy + 1);
+    ctx.lineTo(sx + plat.w - 3, sy + 1);
+    ctx.stroke();
+
+    // 草を生やす
+    const grassSeed = seededRandom(Math.floor(plat.x * 13 + plat.y * 7));
+    const grassCount = Math.floor(plat.w / 8);
+    for (let i = 0; i < grassCount; i++) {
+      const gx = sx + 4 + grassSeed() * (plat.w - 8);
+      const grassH = 4 + grassSeed() * 8;
+      const sway = Math.sin(time + gx * 0.1) * 1.5;
+      const shade = grassSeed();
+
+      ctx.strokeStyle = shade > 0.5 ? '#3d8b4f' : '#2d6a3f';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(gx, sy);
+      ctx.quadraticCurveTo(gx + sway, sy - grassH * 0.6, gx + sway * 1.5, sy - grassH);
+      ctx.stroke();
+
+      // たまに2本セット
+      if (grassSeed() > 0.6) {
+        ctx.beginPath();
+        ctx.moveTo(gx + 2, sy);
+        ctx.quadraticCurveTo(gx + 2 - sway * 0.5, sy - grassH * 0.5, gx + 2 - sway, sy - grassH * 0.8);
+        ctx.stroke();
+      }
+    }
+
+    // 花を咲かせる
+    const flowerSeed = seededRandom(Math.floor(plat.x * 31 + plat.y * 17));
+    const flowerCount = Math.floor(plat.w / 50);
+    const flowerColors = ['#ff6b8a', '#ffb347', '#ff85c0', '#87ceeb', '#dda0dd', '#fff44f'];
+    for (let i = 0; i < flowerCount; i++) {
+      const fx = sx + 10 + flowerSeed() * (plat.w - 20);
+      const stemH = 8 + flowerSeed() * 10;
+      const sway = Math.sin(time * 0.8 + fx * 0.15) * 1.2;
+      const tipX = fx + sway;
+      const tipY = sy - stemH;
+      const color = flowerColors[Math.floor(flowerSeed() * flowerColors.length)];
+      const petalSize = 2.5 + flowerSeed() * 1.5;
+
+      // 茎
+      ctx.strokeStyle = '#2d8a4e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(fx, sy);
+      ctx.quadraticCurveTo(fx + sway * 0.5, sy - stemH * 0.5, tipX, tipY);
+      ctx.stroke();
+
+      // 葉っぱ（たまに）
+      if (flowerSeed() > 0.5) {
+        const leafY = sy - stemH * 0.4;
+        const leafDir = flowerSeed() > 0.5 ? 1 : -1;
+        ctx.fillStyle = '#3a9e55';
+        ctx.beginPath();
+        ctx.ellipse(fx + leafDir * 4, leafY, 4, 2, leafDir * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 花びら
+      ctx.fillStyle = color;
+      for (let p = 0; p < 5; p++) {
+        const angle = (p / 5) * Math.PI * 2 + time * 0.3;
+        const px = tipX + Math.cos(angle) * petalSize;
+        const py = tipY + Math.sin(angle) * petalSize;
+        ctx.beginPath();
+        ctx.ellipse(px, py, petalSize * 0.6, petalSize * 0.4, angle, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 花の中心
+      ctx.fillStyle = '#fff44f';
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, petalSize * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 小さいクローバー・雑草（薄い足場にも）
+    if (plat.h < 40) {
+      const miniSeed = seededRandom(Math.floor(plat.x * 23 + plat.y * 11));
+      const miniCount = Math.floor(plat.w / 20);
+      for (let i = 0; i < miniCount; i++) {
+        const mx = sx + 3 + miniSeed() * (plat.w - 6);
+        const mh = 2 + miniSeed() * 4;
+        const sway = Math.sin(time + mx * 0.2) * 1;
+        ctx.strokeStyle = '#4a9e5e';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(mx, sy);
+        ctx.quadraticCurveTo(mx + sway, sy - mh * 0.6, mx + sway, sy - mh);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawMovingPlatforms() {
+  for (const mp of movingPlatforms) {
+    const sx = mp.x - camera.x, sy = mp.y - camera.y;
+    ctx.fillStyle = mp.color;
+    ctx.fillRect(sx, sy, mp.w, mp.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    for (let i = 0; i < mp.w; i += 16) ctx.fillRect(sx + i, sy + mp.h / 2 - 1, 8, 2);
+  }
+}
+
+function drawCoins() {
+  const time = Date.now() * 0.005;
+  for (const c of coins) {
+    if (c.collected) continue;
+    const sx = c.x - camera.x, sy = c.y - camera.y + Math.sin(time + c.x) * 4;
+    ctx.beginPath(); ctx.arc(sx, sy, c.r + 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(245,166,35,0.2)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, sy, c.r, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5a623'; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, sy, c.r - 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166'; ctx.fill();
+  }
+}
+
+function drawHazards() {
+  for (const h of hazards) {
+    const sx = h.x - camera.x, sy = h.y - camera.y;
+    ctx.fillStyle = '#e94560';
+    const spikeW = 10, count = Math.floor(h.w / spikeW);
+    for (let i = 0; i < count; i++) {
+      ctx.beginPath();
+      ctx.moveTo(sx + i * spikeW, sy + h.h);
+      ctx.lineTo(sx + i * spikeW + spikeW / 2, sy);
+      ctx.lineTo(sx + (i + 1) * spikeW, sy + h.h);
+      ctx.fill();
+    }
+  }
+}
+
+function drawCheckpoints() {
+  for (const cp of checkpoints) {
+    const sx = cp.x - camera.x;
+    const sy = cp.y - camera.y;
+    const flagColor = cp.passed ? '#4ade80' : '#aaa';
+    // ポール
+    ctx.fillStyle = '#888';
+    ctx.fillRect(sx - 2, sy - 120, 4, 120);
+    // 旗
+    ctx.fillStyle = flagColor;
+    ctx.beginPath();
+    ctx.moveTo(sx + 2, sy - 120);
+    ctx.lineTo(sx + 40, sy - 105);
+    ctx.lineTo(sx + 2, sy - 90);
+    ctx.fill();
+    // 「中間」テキスト
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(cp.passed ? 'OK!' : '中間', sx + 2, sy - 130);
+  }
+}
+
+function drawGoal() {
+  const sx = goalX - camera.x;
+  const sy = canvas.height - 60 - camera.y - 120;
+  const time = Date.now() * 0.003;
+  ctx.fillStyle = '#aaa';
+  ctx.fillRect(sx + 25, sy, 4, 120);
+  ctx.fillStyle = `hsl(${(time * 50) % 360}, 80%, 60%)`;
+  ctx.beginPath();
+  ctx.moveTo(sx + 29, sy); ctx.lineTo(sx + 75, sy + 20); ctx.lineTo(sx + 29, sy + 40);
+  ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('GOAL', sx + 30, sy - 10);
+}
+
+function drawParticles() {
+  for (const pt of particles) {
+    const sx = pt.x - camera.x, sy = pt.y - camera.y;
+    ctx.globalAlpha = pt.life / 50;
+    ctx.fillStyle = pt.color;
+    ctx.fillRect(sx - pt.size / 2, sy - pt.size / 2, pt.size, pt.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function updateButterflies() {
+  const time = Date.now() * 0.001;
+  for (const bf of butterflies) {
+    // ワールド座標で移動（少しずつ右に進む）
+    bf.x += bf.driftSpeed || 0.3;
+
+    // 飛び方ごとのY変化
+    if (bf.flyStyle === 'zigzag') {
+      bf.x += Math.cos(time * 1.8 + bf.phase) * 0.8;
+      bf.drawY = bf.baseY + Math.sin(time * bf.speed + bf.phase) * bf.floatAmp
+          + Math.sin(time * 2.5 + bf.phase) * 12;
+    } else if (bf.flyStyle === 'circle') {
+      bf.x += Math.cos(time * 0.6 + bf.phase) * 0.5;
+      bf.drawY = bf.baseY + Math.sin(time * 0.6 + bf.phase) * 35
+          + Math.sin(time * 0.2) * 15;
+    } else if (bf.flyStyle === 'swoop') {
+      const cycle = (time * 0.3 + bf.phase) % (Math.PI * 2);
+      const swoopY = cycle < Math.PI ? Math.sin(cycle) * bf.floatAmp : Math.sin(cycle) * bf.floatAmp * 0.3;
+      bf.x += 0.2;
+      bf.drawY = bf.baseY - swoopY + Math.sin(time * 1.5) * 8;
+    }
+
+    // 画面外に出たらプレイヤーの先に再配置
+    if (bf.x < camera.x - 200) {
+      bf.x = camera.x + canvas.width + 100 + Math.random() * 300;
+      bf.baseY = canvas.height * 0.15 + Math.random() * canvas.height * 0.5;
+    }
+    if (bf.x > camera.x + canvas.width + 500) {
+      bf.x = camera.x - 100 - Math.random() * 200;
+      bf.baseY = canvas.height * 0.15 + Math.random() * canvas.height * 0.5;
+    }
+  }
+}
+
+function drawOneButterfly(bf, time) {
+  const sx = bf.x - camera.x;
+  const sy = bf.drawY || bf.baseY;
+  const wing = Math.sin(time * bf.wingSpeed + bf.phase);
+
+  // 飛ぶ方向に少し傾く
+  const tilt = bf.flyStyle === 'zigzag'
+    ? Math.cos(time * 1.8 + bf.phase) * 0.3
+    : Math.sin(time * bf.speed + bf.phase) * 0.15;
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(tilt);
+
+  const mainColor = bf.color;
+  const subColor = bf.color2 || 'rgba(255,255,255,0.3)';
+
+  // 左の羽
+  ctx.save();
+  ctx.scale(wing * 0.6 + 0.4, 1);
+  ctx.fillStyle = mainColor;
+  ctx.beginPath();
+  ctx.ellipse(-bf.size * 1.2, -bf.size * 0.3, bf.size * 1.5, bf.size * 1.2, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // 羽の模様
+  ctx.fillStyle = subColor;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.ellipse(-bf.size * 1.3, -bf.size * 0.5, bf.size * 0.6, bf.size * 0.5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // 下の羽
+  ctx.fillStyle = mainColor;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  ctx.ellipse(-bf.size * 0.8, bf.size * 0.6, bf.size * 1.0, bf.size * 0.8, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // 右の羽
+  ctx.save();
+  ctx.scale(-(wing * 0.6 + 0.4), 1);
+  ctx.fillStyle = mainColor;
+  ctx.beginPath();
+  ctx.ellipse(-bf.size * 1.2, -bf.size * 0.3, bf.size * 1.5, bf.size * 1.2, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = subColor;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.ellipse(-bf.size * 1.3, -bf.size * 0.5, bf.size * 0.6, bf.size * 0.5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = mainColor;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  ctx.ellipse(-bf.size * 0.8, bf.size * 0.6, bf.size * 1.0, bf.size * 0.8, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // 体
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, bf.size * 0.2, bf.size * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 触角
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -bf.size * 0.6);
+  ctx.quadraticCurveTo(-bf.size * 0.5, -bf.size * 1.5, -bf.size * 0.8, -bf.size * 1.6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -bf.size * 0.6);
+  ctx.quadraticCurveTo(bf.size * 0.5, -bf.size * 1.5, bf.size * 0.8, -bf.size * 1.6);
+  ctx.stroke();
+  ctx.fillStyle = '#555';
+  ctx.beginPath();
+  ctx.arc(-bf.size * 0.8, -bf.size * 1.6, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(bf.size * 0.8, -bf.size * 1.6, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawButterflies(foreground) {
+  const time = Date.now() * 0.001;
+  for (const bf of butterflies) {
+    if (foreground && !bf.foreground) continue;
+    if (!foreground && bf.foreground) continue;
+    drawOneButterfly(bf, time);
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBG(); drawButterflies(false); drawPlatforms(); drawMovingPlatforms(); drawHazards();
+  drawCoins(); drawCheckpoints(); drawGoal(); drawParticles(); drawPlayer();
+  drawButterflies(true);
+}
+
+function gameLoop() {
+  update();
+  if (gameRunning) draw();
+  requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
