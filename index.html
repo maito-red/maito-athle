@@ -70,6 +70,20 @@ canvas { display: block; }
 .stage-badge:hover {
   background: rgba(233,69,96,0.4); border-color: #e94560; color: #fff; transform: scale(1.1);
 }
+#touch-controls {
+  display: none; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 20;
+  pointer-events: none; padding: 10px 15px 20px;
+}
+#touch-controls button {
+  pointer-events: auto; border: none; border-radius: 50%;
+  width: 70px; height: 70px; font-size: 30px;
+  background: rgba(255,255,255,0.25); color: #fff;
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+}
+#touch-controls button:active { background: rgba(255,255,255,0.5); }
+#touch-left-group { position: absolute; bottom: 20px; left: 15px; display: flex; gap: 10px; }
+#touch-right-group { position: absolute; bottom: 20px; right: 15px; }
 </style>
 </head>
 <body>
@@ -120,6 +134,16 @@ canvas { display: block; }
 
 <canvas id="game"></canvas>
 
+<div id="touch-controls">
+  <div id="touch-left-group">
+    <button id="btn-left">&#9664;</button>
+    <button id="btn-right">&#9654;</button>
+  </div>
+  <div id="touch-right-group">
+    <button id="btn-jump">&#9650;</button>
+  </div>
+</div>
+
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -139,6 +163,21 @@ const PLAYER_H = 54;
 const keys = {};
 window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// スマホ判定＆タッチ操作
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isTouchDevice) {
+  document.getElementById('touch-controls').style.display = 'block';
+}
+function bindTouch(id, keyCode) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('touchstart', e => { e.preventDefault(); keys[keyCode] = true; });
+  btn.addEventListener('touchend', e => { e.preventDefault(); keys[keyCode] = false; });
+  btn.addEventListener('touchcancel', e => { keys[keyCode] = false; });
+}
+bindTouch('btn-left', 'ArrowLeft');
+bindTouch('btn-right', 'ArrowRight');
+bindTouch('btn-jump', 'Space');
 
 let player, camera, platforms, coins, hazards, movingPlatforms, goalX, gameRunning, coinCount, particles;
 let butterflies = [];
@@ -204,20 +243,27 @@ function addMovingSegment(x, gY, rng) {
   for (let i = 0; i < count; i++) {
     const isVert = rng() > 0.5;
     const px = x + i * (250 + rng() * 100);
+    let platY;
     if (isVert) {
       const baseY = gY - 100 - rng() * 80;
+      platY = baseY;
       movingPlatforms.push({
         x: px, y: baseY, w: 100, h: 20, color: '#e09800',
         startY: baseY - 80, endY: baseY + 40, speed: 1 + rng(), dir: 1, axis: 'y',
         startX: px, endX: px
       });
     } else {
+      platY = gY - 100 - rng() * 80;
       movingPlatforms.push({
-        x: px, y: gY - 100 - rng() * 80, w: 100, h: 20, color: '#e09800',
+        x: px, y: platY, w: 100, h: 20, color: '#e09800',
         startX: px, endX: px + 150 + rng() * 100, speed: 1.2 + rng(), dir: 1, axis: 'x'
       });
     }
-    if (rng() > 0.3) coins.push({ x: px + 50, y: gY - 200 - rng() * 50, r: 12, collected: false });
+    if (rng() > 0.3) {
+      const coinY = platY - 80 - rng() * 30;
+      platforms.push({ x: px + 20, y: platY, w: 60, h: 12, color: '#3a7d5c' });
+      coins.push({ x: px + 50, y: coinY, r: 12, collected: false });
+    }
     x = px + 250;
   }
   return x;
