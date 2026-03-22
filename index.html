@@ -561,6 +561,7 @@ function update() {
   }
 
   let ridingPlatform = null;
+  let ridingDist = Infinity;
   for (const mp of movingPlatforms) {
     const prevX = mp.x; const prevY = mp.y;
     if (mp.axis === 'x') {
@@ -572,9 +573,13 @@ function update() {
     }
     if (p.vy >= 0 && p.x + p.w > mp.x && p.x < mp.x + mp.w &&
         p.y + p.h >= mp.y - 4 && p.y + p.h <= mp.y + 14) {
-      ridingPlatform = mp;
-      ridingPlatform.dx = mp.x - prevX;
-      ridingPlatform.dy = mp.y - prevY;
+      const dist = Math.abs((p.y + p.h) - mp.y);
+      if (dist < ridingDist) {
+        ridingDist = dist;
+        ridingPlatform = mp;
+        ridingPlatform.dx = mp.x - prevX;
+        ridingPlatform.dy = mp.y - prevY;
+      }
     }
   }
 
