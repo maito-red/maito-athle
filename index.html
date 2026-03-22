@@ -407,13 +407,24 @@ function buildStage(stageNum) {
       return x + 260;
     },
     10: (x, gY, rng) => {
-      // 全部ミックス
+      // 全部ミックス — セグメント間に地面を入れる
       const type = Math.floor(rng() * 5);
-      if (type === 0) return addJumpSegment(x, gY, rng);
-      if (type === 1) return addSpikeSegment(x, gY, rng);
-      if (type === 2) return addMovingSegment(x, gY, rng);
-      if (type === 3) return addWallKickSegment(x, gY, rng);
-      return addComboSegment(x, gY, rng);
+      if (type === 0) {
+        x = addJumpSegment(x, gY, rng);
+      } else if (type === 1) {
+        x = addSpikeSegment(x, gY, rng);
+      } else if (type === 2) {
+        x = addMovingSegment(x, gY, rng);
+        platforms.push({ x, y: gY, w: 150, h: 60, color: '#2d6a4f' });
+        x += 200;
+      } else if (type === 3) {
+        x = addWallKickSegment(x, gY, rng);
+        platforms.push({ x, y: gY, w: 200, h: 60, color: '#2d6a4f' });
+        x += 250;
+      } else {
+        x = addComboSegment(x, gY, rng);
+      }
+      return x;
     }
   };
 
