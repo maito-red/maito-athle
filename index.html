@@ -242,7 +242,7 @@ function addMovingSegment(x, gY, rng) {
   const count = 2 + Math.floor(rng() * 2);
   for (let i = 0; i < count; i++) {
     const isVert = rng() > 0.5;
-    const px = x + i * (250 + rng() * 100);
+    const px = x + i * (180 + rng() * 60);
     let platY;
     if (isVert) {
       const baseY = gY - 100 - rng() * 80;
@@ -264,7 +264,7 @@ function addMovingSegment(x, gY, rng) {
       platforms.push({ x: px + 20, y: platY, w: 60, h: 12, color: '#3a7d5c' });
       coins.push({ x: px + 50, y: coinY, r: 12, collected: false });
     }
-    x = px + 250;
+    x = px + 200;
   }
   return x;
 }
