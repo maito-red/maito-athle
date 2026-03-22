@@ -200,12 +200,12 @@ function addJumpSegment(x, gY, rng, easy) {
   const count = easy ? (2 + Math.floor(rng() * 2)) : (3 + Math.floor(rng() * 3));
   for (let i = 0; i < count; i++) {
     const gap = easy ? (60 + rng() * 30) : (120 + rng() * 40);
-    const px = x + i * gap;
+    const px = x + gap;
     const py = easy ? (gY - 15 - rng() * 30) : (gY - 20 - rng() * 80);
     const w = easy ? (120 + rng() * 60) : (70 + rng() * 50);
     platforms.push({ x: px, y: py, w, h: 20, color: '#52796f' });
     if (rng() > 0.4) coins.push({ x: px + w/2, y: py - 40, r: 12, collected: false });
-    x = px + w + (easy ? 15 : 30);
+    x = px + w;
   }
   return x;
 }
